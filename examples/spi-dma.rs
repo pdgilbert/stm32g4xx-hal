@@ -5,7 +5,6 @@
 #![no_std]
 
 use crate::hal::{
-    block,
     delay::DelayFromCountDownTimer,
     gpio::gpioa::PA5,
     gpio::gpioa::PA6,
@@ -22,7 +21,6 @@ use crate::hal::{
 };
 
 use cortex_m_rt::entry;
-use log::info;
 use stm32g4xx_hal as hal;
 use stm32g4xx_hal::dma::config::DmaConfig;
 use stm32g4xx_hal::dma::stream::DMAExt;
@@ -30,6 +28,7 @@ use stm32g4xx_hal::dma::TransferExt;
 
 #[macro_use]
 mod utils;
+// use utils::logger::info;
 
 const BUFFER_SIZE: usize = 254;
 
@@ -49,10 +48,10 @@ fn main() -> ! {
     let miso: PA6<Alternate<AF5>> = gpioa.pa6.into_alternate();
     let mosi: PA7<Alternate<AF5>> = gpioa.pa7.into_alternate();
 
-    let mut spi = dp
+    let spi = dp
         .SPI1
         .spi((sclk, miso, mosi), spi::MODE_0, 400.kHz(), &mut rcc);
-    let mut streams = dp.DMA1.split(&rcc);
+    let streams = dp.DMA1.split(&rcc);
     let config = DmaConfig::default()
         .transfer_complete_interrupt(false)
         .circular_buffer(true)
@@ -69,6 +68,6 @@ fn main() -> ! {
             .into_memory_to_peripheral_transfer(spi.enable_tx_dma(), &mut dma_buf[..], config);
     transfer_dma.start(|_spi| {});
     loop {
-        delay_tim2.delay_ms(1000_u16);
+        delay_tim2.delay_ms(1000);
     }
 }
