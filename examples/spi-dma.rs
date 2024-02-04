@@ -58,8 +58,9 @@ fn main() -> ! {
         .memory_increment(true);
 
     let mut buf: [u8; BUFFER_SIZE] = [0; BUFFER_SIZE];
-    for index in 0..BUFFER_SIZE {
-        buf[index] = index as u8;
+    /* Set a some datas */
+    for (index, item) in buf.iter_mut().enumerate().take(BUFFER_SIZE) {
+        *item = index as u8;
     }
     let dma_buf = cortex_m::singleton!(: [u8; BUFFER_SIZE] = buf).unwrap();
     let mut transfer_dma =
