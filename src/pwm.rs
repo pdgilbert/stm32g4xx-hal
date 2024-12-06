@@ -180,7 +180,7 @@ use crate::stm32::RCC;
     feature = "stm32g483",
     feature = "stm32g484",
     feature = "stm32g491",
-    feature = "stm32g4A1"
+    feature = "stm32g4a1"
 ))]
 use crate::stm32::TIM20;
 #[cfg(any(
@@ -875,7 +875,7 @@ pins! {
     feature = "stm32g483",
     feature = "stm32g484",
     feature = "stm32g491",
-    feature = "stm32g4A1"
+    feature = "stm32g4a1"
 ))]
 pins! {
     TIM20:
@@ -1791,7 +1791,7 @@ tim_pin_hal! {
     feature = "stm32g483",
     feature = "stm32g484",
     feature = "stm32g491",
-    feature = "stm32g4A1"
+    feature = "stm32g4a1"
 ))]
 tim_pin_hal! {
     TIM20: (C1, cc1e, cc1p, ccmr1_output, oc1pe, oc1m, ccr1, u16, cc1ne, cc1np),

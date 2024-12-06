@@ -40,7 +40,7 @@ pub enum LSCOSrc {
 
 /// PLL clock input source
 #[derive(Clone, Copy)]
-pub enum PLLSrc {
+pub enum PllSrc {
     HSI,
     HSE(Hertz),
     HSE_BYPASS(Hertz),
@@ -304,7 +304,7 @@ impl PllNMul {
 /// PLL config
 #[derive(Clone, Copy)]
 pub struct PllConfig {
-    pub mux: PLLSrc,
+    pub mux: PllSrc,
     pub m: PllMDiv,
     pub n: PllNMul,
     pub r: Option<PllRDiv>,
@@ -315,7 +315,7 @@ pub struct PllConfig {
 impl Default for PllConfig {
     fn default() -> PllConfig {
         PllConfig {
-            mux: PLLSrc::HSI,
+            mux: PllSrc::HSI,
             m: PllMDiv::DIV_2,
             n: PllNMul::MUL_8,
             r: Some(PllRDiv::DIV_2),
@@ -323,6 +323,18 @@ impl Default for PllConfig {
             p: None,
         }
     }
+}
+
+/// FDCAN Clock Source
+#[allow(clippy::upper_case_acronyms)]
+pub enum FdCanClockSource {
+    /// Select HSE as the FDCAN clock source
+    HSE = 0b00,
+    /// Select PLL "Q" clock as the FDCAN clock source
+    PLLQ = 0b01,
+    /// Select "P" clock as the FDCAN clock source
+    PCLK = 0b10,
+    //Reserved = 0b10,
 }
 
 /// Clocks configutation
@@ -335,6 +347,8 @@ pub struct Config {
 
     /// Required for f_sys > 150MHz
     pub(crate) enable_boost: bool,
+
+    pub(crate) fdcansel: FdCanClockSource,
 }
 
 impl Config {
@@ -379,6 +393,11 @@ impl Config {
         self.enable_boost = enable_boost;
         self
     }
+
+    pub fn fdcan_src(mut self, mux: FdCanClockSource) -> Self {
+        self.fdcansel = mux;
+        self
+    }
 }
 
 impl Default for Config {
@@ -390,6 +409,7 @@ impl Default for Config {
             apb1_psc: Prescaler::NotDivided,
             apb2_psc: Prescaler::NotDivided,
             enable_boost: false,
+            fdcansel: FdCanClockSource::HSE,
         }
     }
 }

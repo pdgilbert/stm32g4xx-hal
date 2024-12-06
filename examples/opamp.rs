@@ -3,21 +3,11 @@
 #![no_std]
 #![no_main]
 
-use stm32g4xx_hal as hal;
-
-use hal::delay::DelayFromCountDownTimer;
-use hal::timer::Timer;
-use hal::time::ExtU32;
-use hal::adc::AdcClaim;
-use hal::adc::ClockSource;
-use hal::gpio::gpioa::*;
-use hal::gpio::Analog;
-use hal::opamp::opamp1::IntoPga as _;
-use hal::opamp::opamp2::IntoPga as _;
-use hal::opamp::NonInvertingGain;
-use hal::opamp::PgaModeInternal;
-use hal::prelude::*;
-use hal::pwr::PwrExt;
+use stm32g4xx_hal::adc::AdcClaim;
+use stm32g4xx_hal::adc::ClockSource;
+use stm32g4xx_hal::opamp::{Gain, InternalOutput};
+use stm32g4xx_hal::prelude::*;
+use stm32g4xx_hal::pwr::PwrExt;
 
 use utils::logger::info;
 
@@ -45,36 +35,38 @@ fn main() -> ! {
     let (opamp1, opamp2, opamp3, ..) = dp.OPAMP.split(&mut rcc);
 
     // Set up opamp1 and opamp2 in follower mode
-    let opamp1 = opamp1.follower(gpioa.pa1, Some(gpioa.pa2));
-    let opamp2 = opamp2.follower(gpioa.pa7, Option::<PA6<Analog>>::None);
+    let opamp1 = opamp1.follower(gpioa.pa1, gpioa.pa2);
+    let opamp2 = opamp2.follower(gpioa.pa7, InternalOutput);
 
     // Set up opamp1 and opamp2 in open loop mode
-    let opamp3 = opamp3.open_loop(gpiob.pb0, gpiob.pb2, Some(gpiob.pb1));
+    let opamp3 = opamp3.open_loop(gpiob.pb0, gpiob.pb2, gpiob.pb1);
 
     // disable opamps
-    let (opamp1, pa1, some_pa2) = opamp1.disable();
-    let (opamp2, pa7, _none) = opamp2.disable();
+    let (opamp1, pa1, pa2) = opamp1.disable();
+    let (opamp2, pa7) = opamp2.disable();
 
-    let (_opamp3, _pb0, _pb2, _some_pb1) = opamp3.disable();
+    let (_opamp3, _pb0, _pb2, _pb1) = opamp3.disable();
 
     // Configure opamp1 with pa1 as non-inverting input and set gain to x2
     let _opamp1 = opamp1.pga(
         pa1,
-        PgaModeInternal::gain(NonInvertingGain::Gain2),
-        some_pa2, // Route output to pin pa2
+        pa2, // Route output to pin pa2
+        Gain::Gain2,
     );
 
     // Configure op with pa7 as non-inverting input and set gain to x4
     let opamp2 = opamp2.pga(
         pa7,
-        PgaModeInternal::gain(NonInvertingGain::Gain4),
-        Option::<PA6<Analog>>::None, // Do not route output to any external pin, use internal AD instead
+        InternalOutput, // Do not route output to any external pin, use internal AD instead
+        Gain::Gain4,
     );
 
-    // let mut delay = cp.SYST.delay(&rcc.clocks);
-    let mut delay = DelayFromCountDownTimer::new(
-        Timer::new(dp.TIM6, &rcc.clocks).start_count_down(100u32.millis()),
-    );
+    // Lock opamp2. After the opamp is locked its registers cannot be written
+    // until the device is reset (even if using unsafe register accesses).
+    let opamp2 = opamp2.lock();
+
+    let mut delay = cp.SYST.delay(&rcc.clocks);
+
     let mut adc = dp
         .ADC2
         .claim(ClockSource::SystemClock, &rcc, &mut delay, true);
@@ -94,8 +86,7 @@ fn main() -> ! {
 
     #[allow(unreachable_code)]
     {
-        let (_opamp1, _pa1, _mode) = _opamp1.disable();
-        let (_opamp2, _pa7, _mode) = opamp2.disable();
+        let (_opamp1, _pin) = _opamp1.disable();
 
         loop {
             delay.delay_ms(100);

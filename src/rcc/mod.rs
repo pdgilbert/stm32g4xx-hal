@@ -109,18 +109,18 @@ impl Rcc {
             _ => (sys_freq, 0b0000),
         };
         let (apb1_freq, apb1_psc_bits) = match rcc_cfg.apb1_psc {
-            Prescaler::Div2 => (sys_freq / 2, 0b100),
-            Prescaler::Div4 => (sys_freq / 4, 0b101),
-            Prescaler::Div8 => (sys_freq / 8, 0b110),
-            Prescaler::Div16 => (sys_freq / 16, 0b111),
-            _ => (sys_freq, 0b000),
+            Prescaler::Div2 => (ahb_freq / 2, 0b100),
+            Prescaler::Div4 => (ahb_freq / 4, 0b101),
+            Prescaler::Div8 => (ahb_freq / 8, 0b110),
+            Prescaler::Div16 => (ahb_freq / 16, 0b111),
+            _ => (ahb_freq, 0b000),
         };
         let (apb2_freq, apb2_psc_bits) = match rcc_cfg.apb2_psc {
-            Prescaler::Div2 => (sys_freq / 2, 0b100),
-            Prescaler::Div4 => (sys_freq / 4, 0b101),
-            Prescaler::Div8 => (sys_freq / 8, 0b110),
-            Prescaler::Div16 => (sys_freq / 16, 0b111),
-            _ => (sys_freq, 0b000),
+            Prescaler::Div2 => (ahb_freq / 2, 0b100),
+            Prescaler::Div4 => (ahb_freq / 4, 0b101),
+            Prescaler::Div8 => (ahb_freq / 8, 0b110),
+            Prescaler::Div16 => (ahb_freq / 16, 0b111),
+            _ => (ahb_freq, 0b000),
         };
 
         let present_vos_mode = pwr::current_vos();
@@ -216,6 +216,12 @@ impl Rcc {
             _ => apb2_freq * 2,
         };
 
+        // Configure FDCAN clock source.
+        self.rb.ccipr.modify(|_, w| unsafe {
+            // This is sound, as `FdCanClockSource` only contains valid values for this field.
+            w.fdcansel().bits(rcc_cfg.fdcansel as u8)
+        });
+
         Rcc {
             rb: self.rb,
             clocks: Clocks {
@@ -244,15 +250,15 @@ impl Rcc {
 
         // Enable the input clock feeding the PLL
         let (pll_input_freq, pll_src_bits) = match pll_cfg.mux {
-            PLLSrc::HSI => {
+            PllSrc::HSI => {
                 self.enable_hsi();
                 (HSI_FREQ, 0b10)
             }
-            PLLSrc::HSE(freq) => {
+            PllSrc::HSE(freq) => {
                 self.enable_hse(false);
                 (freq.raw(), 0b11)
             }
-            PLLSrc::HSE_BYPASS(freq) => {
+            PllSrc::HSE_BYPASS(freq) => {
                 self.enable_hse(true);
                 (freq.raw(), 0b11)
             }
@@ -408,7 +414,7 @@ impl Rcc {
         let us_per_s = 1_000_000;
         // Number of cycles @ sys_freq for 1us, rounded up, this will
         // likely end up being 2us since the AHB prescaler is changed
-        let delay_cycles = (sys_freq + us_per_s - 1) / us_per_s;
+        let delay_cycles = sys_freq.div_ceil(us_per_s);
         cortex_m::asm::delay(delay_cycles);
 
         self.rb
@@ -438,6 +444,11 @@ impl Rcc {
     pub(crate) fn enable_lsi(&self) {
         self.rb.csr.modify(|_, w| w.lsion().set_bit());
         while self.rb.csr.read().lsirdy().bit_is_clear() {}
+    }
+
+    pub fn enable_hsi48(&self) {
+        self.rb.crrcr.modify(|_, w| w.hsi48on().set_bit());
+        while self.rb.crrcr.read().hsi48rdy().bit_is_clear() {}
     }
 
     pub fn get_reset_reason(&self) -> ResetReason {

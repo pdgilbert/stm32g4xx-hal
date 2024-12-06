@@ -33,7 +33,7 @@ cfg_if::cfg_if! {
                     InterruptSync::new(
                         // We must not use Peripherals::steal() here to get an ITM instance, as the
                         // code might expect to be able to call Peripherals::take() later on.
-                        ItmDest::new(core::mem::transmute(()))
+                        ItmDest::new(core::mem::transmute::<(), stm32g4xx_hal::stm32::ITM>(()))
                     )
                 },
             };
@@ -41,8 +41,8 @@ cfg_if::cfg_if! {
 
         #[allow(unused_macros)]
         macro_rules! println {
-            ($($tt:tt)*) => {
-                log::info!($($tt,)*);
+            ($($arg:tt)+) => {
+                log::info!($($arg)+);
             };
         }
 
@@ -90,8 +90,11 @@ cfg_if::cfg_if! {
 
         #[allow(unused_macros)]
         macro_rules! println {
-            ($($tt:tt)*) => {
-                cortex_m_semihosting::hprintln!($($tt,)*).unwrap();
+            ($s:expr) => {
+                cortex_m_semihosting::hprintln!($s).unwrap();
+            };
+            ($s:expr, $($tt:tt)*) => {
+                cortex_m_semihosting::hprintln!($s, $($tt)*).unwrap();
             };
         }
 

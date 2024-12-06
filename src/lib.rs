@@ -77,6 +77,8 @@ pub mod adc;
 pub mod bb;
 pub mod can;
 pub mod comparator;
+#[cfg(feature = "cordic")]
+pub mod cordic;
 // pub mod crc;
 pub mod dac;
 pub mod delay;
@@ -101,3 +103,5 @@ pub mod time;
 pub mod timer;
 // pub mod watchdog;
 pub mod independent_watchdog;
+#[cfg(feature = "usb")]
+pub mod usb;
